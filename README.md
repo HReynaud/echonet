@@ -1,3 +1,20 @@
+# This is a modified version of this [orignal repo](https://github.com/echonet/dynamic).
+
+The modifications are as follow:
+- The dataloader supports both the [dynamic](https://echonet.github.io/dynamic/) and [pediatric](https://echonet.github.io/pediatric/) datasets
+- The Ejection Fraction regression training script (video.py) now handles different training and validation sets
+
+
+<p align="center">
+<br>
+- <br>
+<br>
+</p>
+
+
+
+# Original README:
+
 EchoNet-Dynamic:<br/>Interpretable AI for beat-to-beat cardiac function assessment
 ------------------------------------------------------------------------------
 
