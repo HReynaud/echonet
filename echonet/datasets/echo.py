@@ -9,6 +9,8 @@ import skimage.draw
 import torchvision
 import echonet
 
+import torch
+
 
 class Echo(torchvision.datasets.VisionDataset):
     """EchoNet-Dynamic Dataset.
@@ -97,14 +99,23 @@ class Echo(torchvision.datasets.VisionDataset):
             # Load video-level labels
             with open(os.path.join(self.root, "FileList.csv")) as f:
                 data = pandas.read_csv(f)
+            if data["Split"].dtype == np.int64:
+                offset = int(os.environ.get('S_OFFSET', '0'))
+                print(f"Warning: Split is kfold (0-9) instead of train/val/test; converting to train/val/test with offset {offset}.")
+                sref = ["TRAIN"] * 8 + ["VAL"] + ["TEST"]
+                smap = {(i+offset)%10:sref[i] for i in range(10)}
+                data["Split"] = data["Split"].map(smap)
+                    # {0: "TRAIN", 1: "TRAIN", 2: "TRAIN", 3: "TRAIN", 4: "TRAIN", 5: "TRAIN", 6: "TRAIN", 7: "TRAIN", 8: "VAL", 9: "TEST"})
             data["Split"].map(lambda x: x.upper())
+            print(data["Split"].unique())
 
             if self.split != "ALL":
                 data = data[data["Split"] == self.split]
 
             self.header = data.columns.tolist()
             self.fnames = data["FileName"].tolist()
-            self.fnames = [fn + ".avi" for fn in self.fnames if os.path.splitext(fn)[1] == ""]  # Assume avi if no suffix
+            print(len(self.fnames))
+            self.fnames = [fn + ".avi" if os.path.splitext(fn)[1] == "" else fn for fn in self.fnames]  # Assume avi if no suffix
             self.outcome = data.values.tolist()
 
             # Check that files are present
@@ -121,26 +132,33 @@ class Echo(torchvision.datasets.VisionDataset):
 
             with open(os.path.join(self.root, "VolumeTracings.csv")) as f:
                 header = f.readline().strip().split(",")
-                assert header == ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]
+                # assert header == ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]
+                if header != ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]:
+                    header = "BAD_HEADER"
+                if not header == "BAD_HEADER":
+                    for line in f:
+                        filename, x1, y1, x2, y2, frame = line.strip().split(',')
+                        filename = filename + ".avi" if os.path.splitext(filename)[1] == "" else filename
+                        x1 = float(x1)
+                        y1 = float(y1)
+                        x2 = float(x2)
+                        y2 = float(y2)
+                        frame = int(frame)
+                        if frame not in self.trace[filename]:
+                            self.frames[filename].append(frame)
+                        self.trace[filename][frame].append((x1, y1, x2, y2))
 
-                for line in f:
-                    filename, x1, y1, x2, y2, frame = line.strip().split(',')
-                    x1 = float(x1)
-                    y1 = float(y1)
-                    x2 = float(x2)
-                    y2 = float(y2)
-                    frame = int(frame)
-                    if frame not in self.trace[filename]:
-                        self.frames[filename].append(frame)
-                    self.trace[filename][frame].append((x1, y1, x2, y2))
-            for filename in self.frames:
-                for frame in self.frames[filename]:
-                    self.trace[filename][frame] = np.array(self.trace[filename][frame])
+            if not header == "BAD_HEADER":
+                for filename in self.frames:
+                    for frame in self.frames[filename]:
+                        self.trace[filename][frame] = np.array(self.trace[filename][frame])
 
-            # A small number of videos are missing traces; remove these videos
-            keep = [len(self.frames[f]) >= 2 for f in self.fnames]
-            self.fnames = [f for (f, k) in zip(self.fnames, keep) if k]
-            self.outcome = [f for (f, k) in zip(self.outcome, keep) if k]
+                # A small number of videos are missing traces; remove these videos
+                keep = [len(self.frames[f]) >= 2 for f in self.fnames]
+                self.fnames = [f for (f, k) in zip(self.fnames, keep) if k]
+                self.outcome = [f for (f, k) in zip(self.outcome, keep) if k]
+
+            assert len(self.fnames) > 0, "No videos found."
 
     def __getitem__(self, index):
         # Find filename of video
@@ -152,7 +170,13 @@ class Echo(torchvision.datasets.VisionDataset):
             video = os.path.join(self.root, "Videos", self.fnames[index])
 
         # Load video into np.array
-        video = echonet.utils.loadvideo(video).astype(np.float32)
+        video = echonet.utils.loadvideo(video) # C T H W
+        if self.target_transform is not None:
+            video = torch.from_numpy(video).permute(1, 0, 2, 3)
+            video = self.target_transform(video)
+            video = video.permute(1, 0, 2, 3).numpy()
+        video = video.astype(np.float32)
+
 
         # Add simulated noise (black out random pixels)
         # 0 represents black at this point (video has not been normalized yet)
@@ -237,12 +261,17 @@ class Echo(torchvision.datasets.VisionDataset):
                 if self.split == "CLINICAL_TEST" or self.split == "EXTERNAL_TEST":
                     target.append(np.float32(0))
                 else:
-                    target.append(np.float32(self.outcome[index][self.header.index(t)]))
+                    if t == "RegEF" and not ("RegEF" in self.header):
+                        t = "EF"
+                    tmp = self.outcome[index][self.header.index(t)]
+                    if t != "FileName":
+                        tmp = np.float32(tmp)
+                    target.append(tmp)
 
         if target != []:
             target = tuple(target) if len(target) > 1 else target[0]
-            if self.target_transform is not None:
-                target = self.target_transform(target)
+            # if self.target_transform is not None:
+            #     target = self.target_transform(target)
 
         # Select clips from video
         video = tuple(video[:, s + self.period * np.arange(length), :, :] for s in start)

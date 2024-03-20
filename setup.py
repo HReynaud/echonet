@@ -30,7 +30,7 @@ setuptools.setup(
         "opencv-python",
         "scikit-image",
         "tqdm",
-        "sklearn"
+        "scikit-learn"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

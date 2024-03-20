@@ -14,9 +14,86 @@ import tqdm
 
 import echonet
 
+"""
+### default run command with pretrained weights
+echonet video --data_dir /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained --pretrained --run_test
+
+### default run command from random weights
+echonet video --data_dir /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_random --random --run_test
+
+### default run command on VAE data with pretrained weights
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_full_vae_rec --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_vae --pretrained --run_test
+
+### default run command on VAE data from random weights
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_full_vae_rec --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_random_vae --random --run_test
+
+### default run command on GEN data from pretrained weights
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_gen --pretrained --run_test
+
+### default run command on GEN data from random weights
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_random_gen --random --run_test
+
+### default run command on GEN data from pretrained weights with no subsampling
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_gen_period1 --pretrained --run_test --period 1
+
+### default run command on GEN_HALF data from pretrained weights with no subsampling
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_half_synth --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_gen_period1_half --pretrained --run_test --period 1
+
+### default run command on GEN_128 data from pretrained weights with no subsampling
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth_128 --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_gen_period1_128 --pretrained --run_test --period 1
+
+### default run command on GEN_80k data from pretrained weights with no subsampling
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth_ckpt80k --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_gen_period1_80k --pretrained --run_test --period 1
+
+### GEN_190k, pretrained, period 1, full gen
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth_ckpt190k --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_gen_period1_190k --pretrained --run_test --period 1
+
+### GEN_190k, pretrained, period 1, full gen (128)
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth_ckpt190k_128 --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_halfgen_period1_190k_128 --pretrained --run_test --period 1
+
+### GEN_190k, pretrained, period 1, half gen
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_half_synth_ckpt190k --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_gen_period1_half_190k --pretrained --run_test --period 1
+
+### GEN 80k, pretrained, period 1, full gen
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth_ckpt80k_16 --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_fullgen_period1_80k_16 --pretrained --run_test --period 1
+
+### GEN 160k, pretrained, period 1, full gen
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth_ckpt160k_64 --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_fullgen_period1_160k_64 --pretrained --run_test --period 1
+
+### GEN 160k, pretrained, period 1, half gen
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_half_synth_ckpt160k_64 --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/default_pretrained_halfgen_period1_160k_64 --pretrained --run_test --period 1
+
+### GEN 80k, pretrained, period 1, full gen
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/dynamic_gen_full_synth_ckpt80k --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/a_deleteme2 --pretrained --run_test --period 1 --num_epochs 1 --val_on gen
+
+### PEDIATRICS, default and kfold
+echonet video --data_dir /vol/ideadata/at70emic/datasets/Echonet-Peds/A4C --output outputs/pediatrics_a4c_weights --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test
+echonet video --data_dir /vol/ideadata/at70emic/datasets/Echonet-Peds/PSAX --output outputs/pediatrics_psax_weights --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test
+NOT USEFUL: echonet video --data_dir /vol/ideadata/at70emic/datasets/Echonet-Peds/MERGED --output outputs/pediatrics_merged_weights --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test
+
+for i in {0..9}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/datasets/Echonet-Peds/A4C --output outputs/pediatrics_a4c_weights_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+for i in {0..9}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/datasets/Echonet-Peds/PSAX --output outputs/pediatrics_psax_weights_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+for i in {0..4}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/datasets/Echonet-Peds/PSAX --output outputs/pediatrics_psax_weights_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+for i in {5..9}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/datasets/Echonet-Peds/PSAX --output outputs/pediatrics_psax_weights_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+
+# VAE REC PEDS A4C
+for i in {0..4}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/peda4c_vae_rec --data_dir_real /vol/ideadata/at70emic/datasets/Echonet-Peds/A4C --output outputs/pediatrics_a4c_weights_vae_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+for i in {5..9}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/peda4c_vae_rec --data_dir_real /vol/ideadata/at70emic/datasets/Echonet-Peds/A4C --output outputs/pediatrics_a4c_weights_vae_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+
+# VAE REC PEDS PSAX
+for i in {0..4}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/pedpsax_vae_rec --data_dir_real /vol/ideadata/at70emic/datasets/Echonet-Peds/PSAX --output outputs/pediatrics_psax_weights_vae_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+for i in {5..9}; do S_OFFSET=$i echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/pedpsax_vae_rec --data_dir_real /vol/ideadata/at70emic/datasets/Echonet-Peds/PSAX --output outputs/pediatrics_psax_weights_vae_$i --weights /vol/ideadata/at70emic/projects/reproductions/dynamic/outputs/default_pretrained/best.pt --run_test; done
+
+
+# MICCAI23 baseline
+echonet video --data_dir /vol/ideadata/at70emic/projects/TMI23/samples/videos_miccai_23 --data_dir_real /vol/ideadata/at70emic/datasets/EchoNet-Dynamic --output outputs/miccai23_baseline --pretrained --run_test --period 1
+
+"""
 
 @click.command("video")
 @click.option("--data_dir", type=click.Path(exists=True, file_okay=False), default=None)
+@click.option("--data_dir_real", type=click.Path(exists=True, file_okay=False), default=None)
+@click.option("--val_on", type=str, default="real", help="real or gen")
 @click.option("--output", type=click.Path(file_okay=False), default=None)
 @click.option("--task", type=str, default="EF")
 @click.option("--model_name", type=click.Choice(
@@ -39,6 +116,8 @@ import echonet
 @click.option("--seed", type=int, default=0)
 def run(
     data_dir=None,
+    data_dir_real=None,
+    val_on="real",
     output=None,
     task="EF",
 
@@ -109,6 +188,9 @@ def run(
     np.random.seed(seed)
     torch.manual_seed(seed)
 
+    if data_dir_real is None:
+        data_dir_real = data_dir
+
     # Set default output directory
     if output is None:
         output = os.path.join("output", "video", "{}_{}_{}_{}".format(model_name, frames, period, "pretrained" if pretrained else "random"))
@@ -128,6 +210,7 @@ def run(
     model.to(device)
 
     if weights is not None:
+        print("Loading weights from {}".format(weights))
         checkpoint = torch.load(weights)
         model.load_state_dict(checkpoint['state_dict'])
 
@@ -138,22 +221,57 @@ def run(
     scheduler = torch.optim.lr_scheduler.StepLR(optim, lr_step_period)
 
     # Compute mean and std
-    mean, std = echonet.utils.get_mean_and_std(echonet.datasets.Echo(root=data_dir, split="train"))
-    kwargs = {"target_type": task,
+    # mean, std = echonet.utils.get_mean_and_std(echonet.datasets.Echo(root=data_dir, split="train"))
+    mean, std = np.array([32.660564, 32.79394, 33.07615]), np.array([49.802944, 49.89014, 50.17571])
+
+    real_kwargs = {"target_type": task,
               "mean": mean,
               "std": std,
-              "length": frames,
-              "period": period,
+              "length": 32, # hard coded to 32 for val and test
+              "period": 2 if val_on=="real" else period, # hard coded to 2 for val and test
               }
+    gen_kwargs = {"target_type": task,
+              "mean": mean,
+              "std": std,
+              "length": frames, # hard coded to 32 for val and test
+              "period": period, # hard coded to 2 for val and test
+              }
+    
+    dataset_paths = {
+        "train": data_dir,
+        "val": data_dir if val_on=="gen" else data_dir_real,
+        "test": data_dir_real,
+    }
+    dataset_kwargs = {
+        "train": gen_kwargs,
+        "val": gen_kwargs if val_on=="gen" else real_kwargs,
+        "test": real_kwargs,
+    }
+
+    print("Training on: ", dataset_paths["train"])
+    print("Validating on: ", dataset_paths["val"])
+    print("Testing on: ", dataset_paths["test"])
 
     # Set up datasets and dataloaders
     dataset = {}
-    dataset["train"] = echonet.datasets.Echo(root=data_dir, split="train", **kwargs, pad=12)
+
+    def rand_channel_scale(x, p=0.5):
+        if torch.rand(1) < p: # 
+            scale = torch.rand(3) + 0.5 # 0.5 - 1.5
+            view = [1]*x.ndim
+            view[-3] = 3
+            x = x * scale.view(view)
+            x = x.clamp(0, 255)
+            x = x.to(dtype=torch.uint8)
+        return x
+
+    dataset["train"] = echonet.datasets.Echo(root=dataset_paths["train"], split="train", **dataset_kwargs["train"], pad=12)
+
     if num_train_patients is not None and len(dataset["train"]) > num_train_patients:
         # Subsample patients (used for ablation experiment)
         indices = np.random.choice(len(dataset["train"]), num_train_patients, replace=False)
         dataset["train"] = torch.utils.data.Subset(dataset["train"], indices)
-    dataset["val"] = echonet.datasets.Echo(root=data_dir, split="val", **kwargs)
+    dataset["val"] = echonet.datasets.Echo(root=dataset_paths["val"], split="val", **dataset_kwargs["val"])
 
     # Run training and testing loops
     with open(os.path.join(output, "log.csv"), "a") as f:
@@ -223,7 +341,7 @@ def run(
             for split in ["val", "test"]:
                 # Performance without test-time augmentation
                 dataloader = torch.utils.data.DataLoader(
-                    echonet.datasets.Echo(root=data_dir, split=split, **kwargs),
+                    echonet.datasets.Echo(root=dataset_paths[split], split=split, **dataset_kwargs[split]),
                     batch_size=batch_size, num_workers=num_workers, shuffle=True, pin_memory=(device.type == "cuda"))
                 loss, yhat, y = echonet.utils.video.run_epoch(model, dataloader, False, None, device)
                 f.write("{} (one clip) R2:   {:.3f} ({:.3f} - {:.3f})\n".format(split, *echonet.utils.bootstrap(y, yhat, sklearn.metrics.r2_score)))
@@ -232,9 +350,9 @@ def run(
                 f.flush()
 
                 # Performance with test-time augmentation
-                ds = echonet.datasets.Echo(root=data_dir, split=split, **kwargs, clips="all")
+                ds = echonet.datasets.Echo(root=dataset_paths[split], split=split, **dataset_kwargs[split], clips="all")
                 dataloader = torch.utils.data.DataLoader(
-                    ds, batch_size=1, num_workers=num_workers, shuffle=False, pin_memory=(device.type == "cuda"))
+                    ds, batch_size=1, num_workers=0, shuffle=False, pin_memory=(device.type == "cuda"))
                 loss, yhat, y = echonet.utils.video.run_epoch(model, dataloader, False, None, device, save_all=True, block_size=batch_size)
                 f.write("{} (all clips) R2:   {:.3f} ({:.3f} - {:.3f})\n".format(split, *echonet.utils.bootstrap(y, np.array(list(map(lambda x: x.mean(), yhat))), sklearn.metrics.r2_score)))
                 f.write("{} (all clips) MAE:  {:.2f} ({:.2f} - {:.2f})\n".format(split, *echonet.utils.bootstrap(y, np.array(list(map(lambda x: x.mean(), yhat))), sklearn.metrics.mean_absolute_error)))
@@ -280,7 +398,6 @@ def run(
                 plt.tight_layout()
                 plt.savefig(os.path.join(output, "{}_roc.pdf".format(split)))
                 plt.close(fig)
-
 
 def run_epoch(model, dataloader, train, optim, device, save_all=False, block_size=None):
     """Run one epoch of training/evaluation for segmentation.
@@ -359,3 +476,6 @@ def run_epoch(model, dataloader, train, optim, device, save_all=False, block_siz
     y = np.concatenate(y)
 
     return total / n, yhat, y
+
+if __name__ == "__main__":
+    run()
