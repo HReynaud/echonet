@@ -130,33 +130,36 @@ class Echo(torchvision.datasets.VisionDataset):
             self.frames = collections.defaultdict(list)
             self.trace = collections.defaultdict(_defaultdict_of_lists)
 
-            with open(os.path.join(self.root, "VolumeTracings.csv")) as f:
-                header = f.readline().strip().split(",")
-                # assert header == ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]
-                if header != ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]:
-                    header = "BAD_HEADER"
+            if os.path.exists(os.path.join(self.root, "VolumeTracings.csv")):
+                with open(os.path.join(self.root, "VolumeTracings.csv")) as f:
+                    header = f.readline().strip().split(",")
+                    # assert header == ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]
+                    if header != ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]:
+                        header = "BAD_HEADER"
+                    if not header == "BAD_HEADER":
+                        for line in f:
+                            filename, x1, y1, x2, y2, frame = line.strip().split(',')
+                            filename = filename + ".avi" if os.path.splitext(filename)[1] == "" else filename
+                            x1 = float(x1)
+                            y1 = float(y1)
+                            x2 = float(x2)
+                            y2 = float(y2)
+                            frame = int(frame)
+                            if frame not in self.trace[filename]:
+                                self.frames[filename].append(frame)
+                            self.trace[filename][frame].append((x1, y1, x2, y2))
+
                 if not header == "BAD_HEADER":
-                    for line in f:
-                        filename, x1, y1, x2, y2, frame = line.strip().split(',')
-                        filename = filename + ".avi" if os.path.splitext(filename)[1] == "" else filename
-                        x1 = float(x1)
-                        y1 = float(y1)
-                        x2 = float(x2)
-                        y2 = float(y2)
-                        frame = int(frame)
-                        if frame not in self.trace[filename]:
-                            self.frames[filename].append(frame)
-                        self.trace[filename][frame].append((x1, y1, x2, y2))
+                    for filename in self.frames:
+                        for frame in self.frames[filename]:
+                            self.trace[filename][frame] = np.array(self.trace[filename][frame])
 
-            if not header == "BAD_HEADER":
-                for filename in self.frames:
-                    for frame in self.frames[filename]:
-                        self.trace[filename][frame] = np.array(self.trace[filename][frame])
-
-                # A small number of videos are missing traces; remove these videos
-                keep = [len(self.frames[f]) >= 2 for f in self.fnames]
-                self.fnames = [f for (f, k) in zip(self.fnames, keep) if k]
-                self.outcome = [f for (f, k) in zip(self.outcome, keep) if k]
+                    # A small number of videos are missing traces; remove these videos
+                    keep = [len(self.frames[f]) >= 2 for f in self.fnames]
+                    self.fnames = [f for (f, k) in zip(self.fnames, keep) if k]
+                    self.outcome = [f for (f, k) in zip(self.outcome, keep) if k]
+            else:
+                print("Warning: VolumeTracings.csv not found; no traces will be loaded.")
 
             assert len(self.fnames) > 0, "No videos found."
 
