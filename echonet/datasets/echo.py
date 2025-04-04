@@ -1,15 +1,15 @@
 """EchoNet-Dynamic Dataset."""
 
-import os
 import collections
-import pandas
+import os
 
 import numpy as np
+import pandas
 import skimage.draw
-import torchvision
-import echonet
-
 import torch
+import torchvision
+
+import echonet
 
 
 class Echo(torchvision.datasets.VisionDataset):
@@ -61,16 +61,23 @@ class Echo(torchvision.datasets.VisionDataset):
         external_test_location (string): Path to videos to use for external testing.
     """
 
-    def __init__(self, root=None,
-                 split="train", target_type="EF",
-                 mean=0., std=1.,
-                 length=16, period=2,
-                 max_length=250,
-                 clips=1,
-                 pad=None,
-                 noise=None,
-                 target_transform=None,
-                 external_test_location=None):
+    def __init__(
+        self,
+        root=None,
+        split="train",
+        target_type="EF",
+        mean=0.0,
+        std=1.0,
+        length=16,
+        period=2,
+        max_length=250,
+        clips=1,
+        pad=None,
+        noise=None,
+        target_transform=None,
+        external_test_location=None,
+        rep=None,
+    ):
         if root is None:
             root = echonet.config.DATA_DIR
 
@@ -90,22 +97,31 @@ class Echo(torchvision.datasets.VisionDataset):
         self.noise = noise
         self.target_transform = target_transform
         self.external_test_location = external_test_location
+        self.rep = rep
 
         self.fnames, self.outcome = [], []
+
+        # can use subsets like FileList_1.csv etc.
+        if self.split.lower() == "train":
+            filelist_name = os.environ.get("FILELIST_NAME", "FileList.csv")
+        else:
+            filelist_name = "FileList.csv"
 
         if self.split == "EXTERNAL_TEST":
             self.fnames = sorted(os.listdir(self.external_test_location))
         else:
             # Load video-level labels
-            with open(os.path.join(self.root, "FileList.csv")) as f:
+            with open(os.path.join(self.root, filelist_name)) as f:
                 data = pandas.read_csv(f)
             if data["Split"].dtype == np.int64:
-                offset = int(os.environ.get('S_OFFSET', '0'))
-                print(f"Warning: Split is kfold (0-9) instead of train/val/test; converting to train/val/test with offset {offset}.")
+                offset = int(os.environ.get("S_OFFSET", "0"))
+                print(
+                    f"Warning: Split is kfold (0-9) instead of train/val/test; converting to train/val/test with offset {offset}."
+                )
                 sref = ["TRAIN"] * 8 + ["VAL"] + ["TEST"]
-                smap = {(i+offset)%10:sref[i] for i in range(10)}
+                smap = {(i + offset) % 10: sref[i] for i in range(10)}
                 data["Split"] = data["Split"].map(smap)
-                    # {0: "TRAIN", 1: "TRAIN", 2: "TRAIN", 3: "TRAIN", 4: "TRAIN", 5: "TRAIN", 6: "TRAIN", 7: "TRAIN", 8: "VAL", 9: "TEST"})
+                # {0: "TRAIN", 1: "TRAIN", 2: "TRAIN", 3: "TRAIN", 4: "TRAIN", 5: "TRAIN", 6: "TRAIN", 7: "TRAIN", 8: "VAL", 9: "TEST"})
             data["Split"].map(lambda x: x.upper())
             print(data["Split"].unique())
 
@@ -115,43 +131,63 @@ class Echo(torchvision.datasets.VisionDataset):
             self.header = data.columns.tolist()
             self.fnames = data["FileName"].tolist()
             print(len(self.fnames))
-            self.fnames = [fn + ".avi" if os.path.splitext(fn)[1] == "" else fn for fn in self.fnames]  # Assume avi if no suffix
+            self.fnames = [
+                fn + ".avi" if os.path.splitext(fn)[1] == "" else fn
+                for fn in self.fnames
+            ]  # Assume avi if no suffix
             self.outcome = data.values.tolist()
 
             # Check that files are present
-            missing = set(self.fnames) - set(os.listdir(os.path.join(self.root, "Videos")))
+            missing = set(self.fnames) - set(
+                os.listdir(os.path.join(self.root, "Videos"))
+            )
             if len(missing) != 0:
-                print("{} videos could not be found in {}:".format(len(missing), os.path.join(self.root, "Videos")))
+                print(
+                    "{} videos could not be found in {}:".format(
+                        len(missing), os.path.join(self.root, "Videos")
+                    )
+                )
                 for f in sorted(missing):
                     print("\t", f)
-                raise FileNotFoundError(os.path.join(self.root, "Videos", sorted(missing)[0]))
+                raise FileNotFoundError(
+                    os.path.join(self.root, "Videos", sorted(missing)[0])
+                )
 
             # Load traces
             self.frames = collections.defaultdict(list)
             self.trace = collections.defaultdict(_defaultdict_of_lists)
 
-            with open(os.path.join(self.root, "VolumeTracings.csv")) as f:
-                header = f.readline().strip().split(",")
-                # assert header == ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]
-                if header != ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]:
-                    header = "BAD_HEADER"
-                if not header == "BAD_HEADER":
-                    for line in f:
-                        filename, x1, y1, x2, y2, frame = line.strip().split(',')
-                        filename = filename + ".avi" if os.path.splitext(filename)[1] == "" else filename
-                        x1 = float(x1)
-                        y1 = float(y1)
-                        x2 = float(x2)
-                        y2 = float(y2)
-                        frame = int(frame)
-                        if frame not in self.trace[filename]:
-                            self.frames[filename].append(frame)
-                        self.trace[filename][frame].append((x1, y1, x2, y2))
+            if os.path.exists(os.path.join(self.root, "VolumeTracings.csv")):
+                with open(os.path.join(self.root, "VolumeTracings.csv")) as f:
+                    header = f.readline().strip().split(",")
+                    # assert header == ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]
+                    if header != ["FileName", "X1", "Y1", "X2", "Y2", "Frame"]:
+                        header = "BAD_HEADER"
+                    if not header == "BAD_HEADER":
+                        for line in f:
+                            filename, x1, y1, x2, y2, frame = line.strip().split(",")
+                            filename = (
+                                filename + ".avi"
+                                if os.path.splitext(filename)[1] == ""
+                                else filename
+                            )
+                            x1 = float(x1)
+                            y1 = float(y1)
+                            x2 = float(x2)
+                            y2 = float(y2)
+                            frame = int(frame)
+                            if frame not in self.trace[filename]:
+                                self.frames[filename].append(frame)
+                            self.trace[filename][frame].append((x1, y1, x2, y2))
+            else:
+                header = "BAD_HEADER"
 
             if not header == "BAD_HEADER":
                 for filename in self.frames:
                     for frame in self.frames[filename]:
-                        self.trace[filename][frame] = np.array(self.trace[filename][frame])
+                        self.trace[filename][frame] = np.array(
+                            self.trace[filename][frame]
+                        )
 
                 # A small number of videos are missing traces; remove these videos
                 keep = [len(self.frames[f]) >= 2 for f in self.fnames]
@@ -160,23 +196,56 @@ class Echo(torchvision.datasets.VisionDataset):
 
             assert len(self.fnames) > 0, "No videos found."
 
+            if self.rep is not None and self.rep > 0:
+                rep_factor = int(os.environ.get("REP_FACTOR", 10))
+                self.ds_length = len(self.fnames) // rep_factor
+                print(
+                    f"Found {len(self.fnames)} with rep={self.rep} and {rep_factor}x rep factor."
+                )
+                print(f"DS length: {self.ds_length}")
+                print(f"Last Index: {self.ds_length * self.rep}")
+                self.rep_start = int(os.environ.get("REP_START", "0"))
+                if self.rep_start > 0:
+                    print(f"Starting at index {self.rep_start} for rep={self.rep}")
+            else:
+                self.ds_length = len(self.fnames)
+
+            self.use_bn_sampling = False
+            if filelist_name != "FileList.csv":
+                self.use_bn_sampling = True
+                self.basenames = list(set(data["BaseName"].tolist()))
+                self.ds_length = len(self.basenames)
+                self.bn_index = {}
+                for i, f in enumerate(self.fnames):
+                    bn = f[:-7]
+                    if bn not in self.bn_index:
+                        self.bn_index[bn] = []
+                    self.bn_index[bn].append(i)
+                # print(self.bn_index)
+                print(f"Found {len(self.basenames)} basenames.")
+
     def __getitem__(self, index):
+        if self.use_bn_sampling:
+            index = self.get_bn_index(index)
+        elif self.rep is not None:
+            index = self.get_rep_idx(index)
         # Find filename of video
         if self.split == "EXTERNAL_TEST":
             video = os.path.join(self.external_test_location, self.fnames[index])
         elif self.split == "CLINICAL_TEST":
-            video = os.path.join(self.root, "ProcessedStrainStudyA4c", self.fnames[index])
+            video = os.path.join(
+                self.root, "ProcessedStrainStudyA4c", self.fnames[index]
+            )
         else:
             video = os.path.join(self.root, "Videos", self.fnames[index])
 
         # Load video into np.array
-        video = echonet.utils.loadvideo(video) # C T H W
+        video = echonet.utils.loadvideo(video)  # C T H W
         if self.target_transform is not None:
             video = torch.from_numpy(video).permute(1, 0, 2, 3)
             video = self.target_transform(video)
             video = video.permute(1, 0, 2, 3).numpy()
         video = video.astype(np.float32)
-
 
         # Add simulated noise (black out random pixels)
         # 0 represents black at this point (video has not been normalized yet)
@@ -203,9 +272,26 @@ class Echo(torchvision.datasets.VisionDataset):
 
         # Set number of frames
         c, f, h, w = video.shape
+        if self.period == "random":
+            period = 1
+            # rand_period = (
+            #     0.8 + np.random.random(1)[0] * 1.2
+            # )  # random period between 0.8 and 1.2
+            values = [0, 1, 2, 3]
+            weights = [0.85, 0.1, 0.035, 0.015]
+            new_fps = 25 + np.random.choice(values, p=weights)
+            video_indices = torch.linspace(
+                0, f - 1, int(f * new_fps / 32), dtype=torch.long
+            )
+            video = video[:, video_indices, :, :]
+            # print(f"New FPS: {new_fps}, Video frames: {f} -> {video.shape[1]}")
+            c, f, h, w = video.shape
+        else:
+            period = self.period
+
         if self.length is None:
             # Take as many frames as possible
-            length = f // self.period
+            length = f // period
         else:
             # Take specified number of frames
             length = self.length
@@ -214,18 +300,21 @@ class Echo(torchvision.datasets.VisionDataset):
             # Shorten videos to max_length
             length = min(length, self.max_length)
 
-        if f < length * self.period:
+        if f < length * period:
             # Pad video with frames filled with zeros if too short
             # 0 represents the mean color (dark grey), since this is after normalization
-            video = np.concatenate((video, np.zeros((c, length * self.period - f, h, w), video.dtype)), axis=1)
+            video = np.concatenate(
+                (video, np.zeros((c, length * period - f, h, w), video.dtype)),
+                axis=1,
+            )
             c, f, h, w = video.shape  # pylint: disable=E0633
 
         if self.clips == "all":
             # Take all possible clips of desired length
-            start = np.arange(f - (length - 1) * self.period)
+            start = np.arange(f - (length - 1) * period)
         else:
             # Take random clips from video
-            start = np.random.choice(f - (length - 1) * self.period, self.clips)
+            start = np.random.choice(f - (length - 1) * period, self.clips)
 
         # Gather targets
         target = []
@@ -253,7 +342,11 @@ class Echo(torchvision.datasets.VisionDataset):
                 x = np.concatenate((x1[1:], np.flip(x2[1:])))
                 y = np.concatenate((y1[1:], np.flip(y2[1:])))
 
-                r, c = skimage.draw.polygon(np.rint(y).astype(np.int), np.rint(x).astype(np.int), (video.shape[2], video.shape[3]))
+                r, c = skimage.draw.polygon(
+                    np.rint(y).astype(np.int),
+                    np.rint(x).astype(np.int),
+                    (video.shape[2], video.shape[3]),
+                )
                 mask = np.zeros((video.shape[2], video.shape[3]), np.float32)
                 mask[r, c] = 1
                 target.append(mask)
@@ -261,11 +354,10 @@ class Echo(torchvision.datasets.VisionDataset):
                 if self.split == "CLINICAL_TEST" or self.split == "EXTERNAL_TEST":
                     target.append(np.float32(0))
                 else:
-                    if t == "RegEF" and not ("RegEF" in self.header):
+                    if not t in self.header:
                         t = "EF"
                     tmp = self.outcome[index][self.header.index(t)]
-                    if t != "FileName":
-                        tmp = np.float32(tmp)
+                    tmp = np.float32(tmp)
                     target.append(tmp)
 
         if target != []:
@@ -274,7 +366,7 @@ class Echo(torchvision.datasets.VisionDataset):
             #     target = self.target_transform(target)
 
         # Select clips from video
-        video = tuple(video[:, s + self.period * np.arange(length), :, :] for s in start)
+        video = tuple(video[:, s + period * np.arange(length), :, :] for s in start)
         if self.clips == 1:
             video = video[0]
         else:
@@ -285,20 +377,33 @@ class Echo(torchvision.datasets.VisionDataset):
             # Crop of original size is taken out
             # (Used as augmentation)
             c, l, h, w = video.shape
-            temp = np.zeros((c, l, h + 2 * self.pad, w + 2 * self.pad), dtype=video.dtype)
-            temp[:, :, self.pad:-self.pad, self.pad:-self.pad] = video  # pylint: disable=E1130
+            temp = np.zeros(
+                (c, l, h + 2 * self.pad, w + 2 * self.pad), dtype=video.dtype
+            )
+            temp[:, :, self.pad : -self.pad, self.pad : -self.pad] = (
+                video  # pylint: disable=E1130
+            )
             i, j = np.random.randint(0, 2 * self.pad, 2)
-            video = temp[:, :, i:(i + h), j:(j + w)]
+            video = temp[:, :, i : (i + h), j : (j + w)]
 
         return video, target
 
     def __len__(self):
-        return len(self.fnames)
+        return self.ds_length
 
     def extra_repr(self) -> str:
         """Additional information to add at end of __repr__."""
         lines = ["Target type: {target_type}", "Split: {split}"]
-        return '\n'.join(lines).format(**self.__dict__)
+        return "\n".join(lines).format(**self.__dict__)
+
+    def get_rep_idx(self, idx):
+        offset = np.random.randint(self.rep) + self.rep_start
+        return (idx + self.ds_length * offset) % len(self.fnames)
+
+    def get_bn_index(self, idx):
+        bn = self.basenames[idx]
+        options = self.bn_index[bn]
+        return options[np.random.randint(len(options))]
 
 
 def _defaultdict_of_lists():
@@ -308,4 +413,5 @@ def _defaultdict_of_lists():
     the Echo dataset cannot be used in a dataloader).
     """
 
+    return collections.defaultdict(list)
     return collections.defaultdict(list)
